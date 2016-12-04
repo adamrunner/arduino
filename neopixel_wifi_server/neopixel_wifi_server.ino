@@ -1,0 +1,91 @@
+#include <Adafruit_NeoPixel.h>
+#include <ESP8266WiFi.h>
+#include <WiFiClient.h>
+#include <ESP8266WebServer.h>
+#include <ESP8266mDNS.h>
+
+const char* ssid =MY_SSID;
+const char* password =MY_PASSWORD;
+
+ESP8266WebServer server(80);
+
+#define PIN            5
+#define NUMPIXELS      144
+
+// When we setup the NeoPixel library, we tell it how many pixels, and which pin to use to send signals.
+// Note that for older NeoPixel strips you might need to change the third parameter--see the strandtest
+// example for more information on possible values.
+Adafruit_NeoPixel pixels = Adafruit_NeoPixel(NUMPIXELS, PIN, NEO_GRB + NEO_KHZ800);
+
+const int led = 13;
+
+void handleRoot() {
+  digitalWrite(led, 1);
+  server.send(200, "text/html", "<h1>Hello</h1>");
+  digitalWrite(led, 0);
+}
+void handleLed(){
+  int pixelIndex = server.arg(0).toInt();
+  int red = server.arg(1).toInt();
+  int green = server.arg(2).toInt();
+  int blue = server.arg(3).toInt();
+  pixels.setPixelColor(pixelIndex, pixels.Color(red, green, blue));
+  pixels.show();
+  server.send(200, "text/html", "<ul><li>LED: " + server.arg(0) + "</li><li>RED: " + server.arg(1) + "</li><li>GREEN: " + server.arg(2) + "</li><li>BLUE: " + server.arg(3) + "</li></ul>");
+}
+void handleNotFound(){
+  digitalWrite(led, 1);
+  String message = "File Not Found\n\n";
+  message += "URI: ";
+  message += server.uri();
+  message += "\nMethod: ";
+  message += (server.method() == HTTP_GET)?"GET":"POST";
+  message += "\nArguments: ";
+  message += server.args();
+  message += "\n";
+  for (uint8_t i=0; i<server.args(); i++){
+    message += " " + server.argName(i) + ": " + server.arg(i) + "\n";
+  }
+  server.send(404, "text/plain", message);
+  digitalWrite(led, 0);
+}
+
+void setup(void){
+  pinMode(led, OUTPUT);
+  digitalWrite(led, 0);
+  Serial.begin(115200);
+  WiFi.begin(ssid, password);
+  Serial.println("");
+
+  // Wait for connection
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+    Serial.print(".");
+  }
+  Serial.println("");
+  Serial.print("Connected to ");
+  Serial.println(ssid);
+  Serial.print("IP address: ");
+  Serial.println(WiFi.localIP());
+
+  if (MDNS.begin("esp8266")) {
+    Serial.println("MDNS responder started");
+  }
+
+  server.on("/", handleRoot);
+
+  server.on("/inline", [](){
+    server.send(200, "text/plain", "this works as well");
+  });
+
+  server.onNotFound(handleNotFound);
+  server.on("/led", handleLed);
+  server.begin();
+  Serial.println("HTTP server started");
+  pixels.begin();
+  pixels.show();
+}
+
+void loop(void){
+  server.handleClient();
+}
