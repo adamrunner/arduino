@@ -5,20 +5,22 @@
 
 #include <ESP8266WiFi.h>
 #include <DHT.h>
-#define DHTPIN 5
+#include "/Users/adamrunner/Documents/Arduino/WifiCreds.h"
+
+#define DHTPIN 2
 #define DHTTYPE DHT22
 DHT dht(DHTPIN, DHTTYPE);
-const char* ssid     = MY_SSID;
-const char* password =MY_PASSWORD;
-const char* sensor_id = "1";
+
+const char* ssid              = MY_SSID;
+const char* password          = MY_PASSWORD;
+const char* sensor_id         = "1";
+const char* host              = TEMP_SERVER;
+const long sendUpdateInterval = SEND_TEMP_INTERVAL;
+const long readTempInterval   = READ_TEMP_INTERVAL;
+
 // TODO: swap the host out with a remote host
 // TODO: use HTTPS
 // TODO: Verify the certificate is legitimate
-const char* host = "192.168.1.156";
-// send a temperature update every 5 minutes (300 seconds, 300k ms)
-//const long pollTempInterval = 300000;
-const long readTempInterval = 5000;
-const long sendUpdateInterval = 20000;
 unsigned long previousReadMillis = 0;
 unsigned long previousSendMillis = 0;
 float temp = 0.0;
@@ -60,7 +62,7 @@ float getHumidity() {
   Serial.println("% RH");
 }
 
-bool shouldReadTemp (){
+bool shouldReadTemp(){
   //TODO: can we make this function more abstract and reusable
   //TODO: Learn about passing pointers to global variables in functions in C / Arduino
   unsigned long currentMillis = millis();

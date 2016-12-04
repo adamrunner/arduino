@@ -6,7 +6,7 @@
 #include <ESP8266WiFi.h>
 #include <OneWire.h>
 #include <DallasTemperature.h>
-#include "WifiCreds.h"
+#include "/Users/adamrunner/Documents/Arduino/WifiCreds.h"
 
 // Data wire is plugged into port 2 on the ESP8266
 #define ONE_WIRE_BUS 2
@@ -17,17 +17,18 @@ OneWire oneWire(ONE_WIRE_BUS);
 // Pass our oneWire reference to Dallas Temperature.
 DallasTemperature sensors(&oneWire);
 
-const char* ssid     = MY_SSID;
-const char* password = MY_PASSWORD;
-const char* sensor_id = "2";
+const char* ssid              = MY_SSID;
+const char* password          = MY_PASSWORD;
+const char* sensor_id         = "2";
+const char* host              = TEMP_SERVER;
+const long sendUpdateInterval = SEND_TEMP_INTERVAL;
+const long readTempInterval   = READ_TEMP_INTERVAL;
 
 // TODO: swap the host out with a remote host
 // TODO: use HTTPS
 // TODO: Verify the certificate is legitimate
-const char* host = "192.168.1.90";
+
 // send a temperature update every 5 minutes (300 seconds, 300k ms)
-const long pollTempInterval = 300000;
-const long readTempInterval = 5000;
 unsigned long previousReadMillis = 0;
 unsigned long previousSendMillis = 0;
 float temp = 0.0;
@@ -52,6 +53,7 @@ void setup() {
 }
 
 float getTemp(){
+  sensors.requestTemperatures(); 
   temp = sensors.getTempFByIndex(0);
   Serial.print("Current Temp: ");
   Serial.print(temp);
