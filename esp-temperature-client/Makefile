@@ -30,29 +30,28 @@ SKETCH ?=
 # Includes in the sketch file of libraries from within the ESP8266 Arduino directories can be automatically
 # detected but if this is not enough, define this variable with all libraries or directories needed.
 LIBS ?= $(ESP_LIBS)/SPI \
-  $(ESP_LIBS)/Wire \
-  $(ESP_LIBS)/ESP8266WiFi \
-  $(ESP_LIBS)/ESP8266WebServer \
-  /Users/adamrunner/Documents/Arduino/libraries/DHT \
-  /Users/adamrunner/Documents/Arduino/libraries/Adafruit_Unified_Sensor \
+		$(ESP_LIBS)/Wire \
+		$(ESP_LIBS)/ESP8266WiFi \
+		$(ESP_LIBS)/ESP8266WebServer \
+		~/Documents/Arduino/libraries/DHT \
+		~/Documents/Arduino/libraries/Adafruit_Unified_Sensor \
+		~/Documents/Arduino/libraries/WifiCreds \
 
 
 # Board specific definitions
-BOARD ?= nodemcu
+BOARD ?= generic
 F_CPU ?= 80000000L
-FLASH_DEF ?= 4M3M
+FLASH_DEF ?= 512k
 FLASH_MODE ?= dio
 FLASH_SPEED ?= 40
 
 # Upload parameters
-UPLOAD_PORT ?= /dev/cu.SLAB_USBtoUART
+UPLOAD_PORT ?= /dev/ttyUSB1
 UPLOAD_VERB ?= -v
-UPLOAD_SPEED = 115200
-
 # OTA parameters
-ESP_ADDR ?= ESP_123456
+ESP_ADDR ?= myesp8266
 ESP_PORT ?= 8266
-ESP_PWD ?= 123
+ESP_PWD ?= 
 
 # HTTP update parameters
 HTTP_ADDR ?= ESP_123456
@@ -224,6 +223,8 @@ upload flash: all
 ota: all
 	$(OTA_TOOL) -i $(ESP_ADDR) -p $(ESP_PORT) -a $(ESP_PWD) -f $(MAIN_EXE)
 
+screen:
+	screen $(UPLOAD_PORT) $(UPLOAD_SPEED)
 http: all
 	$(HTTP_TOOL) --verbose -F image=@$(MAIN_EXE) --user $(HTTP_USR):$(HTTP_PWD) http://$(HTTP_ADDR)$(HTTP_URI)
 	echo "\n"
@@ -240,9 +241,6 @@ upload_fs: $(FS_IMAGE)
 clean:
 	echo Removing all build files...
 	rm  -rf $(BUILD_DIR)/*
-
-screen:
-	screen $(UPLOAD_PORT) $(UPLOAD_SPEED)
 
 list_lib:
 	echo === User specific libraries ===

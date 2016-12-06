@@ -5,7 +5,7 @@
 
 #include <ESP8266WiFi.h>
 #include <DHT.h>
-#include "/Users/adamrunner/Documents/Arduino/WifiCreds.h"
+#include <WifiCreds.h>
 
 #define DHTPIN 2
 #define DHTTYPE DHT22
@@ -31,6 +31,9 @@ void setup() {
   Serial.begin(115200);
   delay(20);
   pinMode(LED_BUILTIN, OUTPUT);
+  digitalWrite(LED_BUILTIN, LOW);
+  Serial.println("Starting...");
+  delay(1000);
   digitalWrite(LED_BUILTIN, HIGH);
   dht.begin();
   WiFi.mode(WIFI_STA);
@@ -139,3 +142,4 @@ void loop() {
   }
   // Call the various helper functions to run the app
 }
+
