@@ -14,10 +14,8 @@ DHT dht(DHTPIN, DHTTYPE);
 const char* ssid              = MY_SSID;
 const char* password          = MY_PASSWORD;
 const char* sensor_id         = "1";
-const char* host              = TEMP_SERVER;
-const long sendUpdateInterval = SEND_TEMP_INTERVAL;
-const long readTempInterval   = READ_TEMP_INTERVAL;
-
+// NOTE: READ_TEMP_INTERVAL and SEND_TEMP_INTERVAL come from WifiCreds.h
+const int LED_PIN = 0;
 // TODO: swap the host out with a remote host
 // TODO: use HTTPS
 // TODO: Verify the certificate is legitimate
@@ -30,11 +28,11 @@ WiFiClient client;
 void setup() {
   Serial.begin(115200);
   delay(20);
-  pinMode(LED_BUILTIN, OUTPUT);
-  digitalWrite(LED_BUILTIN, LOW);
+  pinMode(LED_PIN, OUTPUT);
+  digitalWrite(LED_PIN, LOW);
   Serial.println("Starting...");
   delay(1000);
-  digitalWrite(LED_BUILTIN, HIGH);
+  digitalWrite(LED_PIN, HIGH);
   dht.begin();
   WiFi.mode(WIFI_STA);
   WiFi.begin(ssid, password);
@@ -69,7 +67,7 @@ bool shouldReadTemp(){
   //TODO: can we make this function more abstract and reusable
   //TODO: Learn about passing pointers to global variables in functions in C / Arduino
   unsigned long currentMillis = millis();
-  if (currentMillis - previousReadMillis >= readTempInterval) {
+  if (currentMillis - previousReadMillis >= READ_TEMP_INTERVAL) {
     previousReadMillis = currentMillis;
     return true;
   }else{
@@ -79,7 +77,7 @@ bool shouldReadTemp(){
 
 bool shouldSendUpdate(){
   unsigned long currentMillis = millis();
-  if (currentMillis - previousSendMillis >= sendUpdateInterval) {
+  if (currentMillis - previousSendMillis >= SEND_TEMP_INTERVAL) {
     previousSendMillis = currentMillis;
     return true;
   }else{
@@ -87,59 +85,13 @@ bool shouldSendUpdate(){
   }
 }
 
-
-void sendUpdate(){
-  digitalWrite(LED_BUILTIN, LOW);
-  const int httpPort = 9292;
-  if (!client.connect(host, httpPort)) {
-    Serial.println("connection failed");
-    return;
-  }
-
-  // We now create a URI for the request
-  String url = "/temp?sensor_id=";
-  url += sensor_id;
-  url += "&temp=";
-  url += temp;
-  url += "&humidity=";
-  url += humidity;
-
-  Serial.print("Requesting URL: ");
-  Serial.println(url);
-
-  // This will send the request to the server
-  client.print(String("GET ") + url + " HTTP/1.1\r\n" +
-               "Host: " + host + "\r\n" +
-               "Connection: close\r\n\r\n");
-
-  // Verify that the server responds quickly enough!
-  unsigned long timeout = millis();
-  while (client.available() == 0) {
-    if (millis() - timeout > 5000) {
-      Serial.println(">>> Client Timeout !");
-      client.stop();
-      return;
-    }
-  }
-
-  // Read all the lines of the reply from server and print them to Serial
-  while(client.available()){
-    String line = client.readStringUntil('\r');
-    Serial.print(line);
-  }
-  digitalWrite(LED_BUILTIN, HIGH);
-  Serial.println();
-  Serial.println("closing connection");
-}
-
 void loop() {
   if(shouldReadTemp()){
-    getTemp();
-    getHumidity();
+    temp     = getTemp();
+    humidity = getHumidity();
   }
   if(shouldSendUpdate()){
-    sendUpdate();
+    sendUpdate(temp, humidity, LED_PIN);
   }
   // Call the various helper functions to run the app
 }
-
