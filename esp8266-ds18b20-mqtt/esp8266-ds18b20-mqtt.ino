@@ -94,6 +94,9 @@ void reconnect() {
     }
   }
 }
+//TODO: Still not working - determine solution to pass the thing (a char array)
+// To a function and then have the function modify it
+
 void prepData(char msg, float h, float f){
   String dataString = "";
   char buffer[16];
