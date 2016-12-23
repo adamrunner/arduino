@@ -1,46 +1,79 @@
 /*
- ESP8266 MQTT Temperature Sensor
+ Basic ESP8266 MQTT example
+
+ This sketch demonstrates the capabilities of the pubsub library in combination
+ with the ESP8266 board/library.
 
  It connects to an MQTT server then:
-  - publishes the current Temperature and Humidtiy read from the DHT22 sensor to the topic "temperature" every 10 seconds
+  - publishes "hello world" to the topic "outTopic" every two seconds
   - subscribes to the topic "inTopic", printing out any messages
     it receives. NB - it assumes the received payloads are strings not binary
   - If the first character of the topic "inTopic" is an 1, switch ON the ESP Led,
     else switch it off
+
+ It will reconnect to the server if the connection is lost using a blocking
+ reconnect function. See the 'mqtt_reconnect_nonblocking' example for how to
+ achieve the same result without blocking the main loop.
+
+ To install the ESP8266 board, (using Arduino 1.6.4+):
+  - Add the following 3rd party board manager under "File -> Preferences -> Additional Boards Manager URLs":
+       http://arduino.esp8266.com/stable/package_esp8266com_index.json
+  - Open the "Tools -> Board -> Board Manager" and click install for the ESP8266"
+  - Select your ESP8266 in "Tools -> Board"
+
 */
 
 #include <ESP8266WiFi.h>
 #include <PubSubClient.h>
 #include <WifiCreds.h>
-const char* mqtt_server = "192.168.1.90";
+#include <OneWire.h>
+#include <DallasTemperature.h>
+#define ONE_WIRE_BUS 2
+#define SLEEP_DELAY_IN_SECONDS  30
 
+uint8_t MAC_array[6];
+char MAC_char[18];
+
+// Setup a oneWire instance to communicate with any OneWire devices (not just Maxim/Dallas temperature ICs)
+OneWire oneWire(ONE_WIRE_BUS);
+
+// Pass our oneWire reference to Dallas Temperature.
+DallasTemperature sensors(&oneWire);
 WiFiClient espClient;
 PubSubClient client(espClient);
 long lastMsg = 0;
 char msg[50];
-int value = 0;
+float temp = 0.0;
+
+char currentHostname[14];
+
+float getTemp(){
+  sensors.requestTemperatures();
+  temp = sensors.getTempFByIndex(0);
+  Serial.print("Current Temp: ");
+  Serial.print(temp);
+  Serial.println("ºF");
+  return temp;
+}
+
 
 void setup() {
   pinMode(BUILTIN_LED, OUTPUT);     // Initialize the BUILTIN_LED pin as an output
   Serial.begin(115200);
   setup_wifi();
-  client.setServer(mqtt_server, 1883);
+  client.setServer(TEMP_SERVER, 1883);
   client.setCallback(callback);
-  // Serial.print("Chip ID: ");
-  // Serial.println(ESP.getChipId());
-  Serial.print("Hostname: ");
-  Serial.println(WiFi.hostname());
 }
 
 void setup_wifi() {
-  WiFi.mode(WIFI_STA);
+
   delay(10);
   // We start by connecting to a WiFi network
   Serial.println();
   Serial.print("Connecting to ");
+  WiFi.mode(WIFI_STA);
   Serial.println(MY_SSID);
-
-  WiFi.begin(MY_SSID, MY_PASSWORD);
+    WiFi.begin(MY_SSID, MY_PASSWORD);
 
   while (WiFi.status() != WL_CONNECTED) {
     delay(500);
@@ -51,6 +84,11 @@ void setup_wifi() {
   Serial.println("WiFi connected");
   Serial.println("IP address: ");
   Serial.println(WiFi.localIP());
+  // Store the s to use later for MQTT ID
+  String hostnameString = WiFi.hostname();
+  hostnameString.toCharArray(currentHostname, 14);
+  Serial.print("Hostname: ");
+  Serial.println(WiFi.hostname());
 }
 
 void callback(char* topic, byte* payload, unsigned int length) {
@@ -73,15 +111,12 @@ void callback(char* topic, byte* payload, unsigned int length) {
 
 }
 
-
 void reconnect() {
-  char hostname[8];
-  WiFi.hostname().toCharArray(hostname, 8);
   // Loop until we're reconnected
   while (!client.connected()) {
     Serial.print("Attempting MQTT connection...");
     // Attempt to connect
-    if (client.connect(hostname)) {
+    if (client.connect(currentHostname)) {
       Serial.println("connected");
       // ... and resubscribe
       client.subscribe("inTopic");
@@ -94,22 +129,6 @@ void reconnect() {
     }
   }
 }
-//TODO: Still not working - determine solution to pass the thing (a char array)
-// To a function and then have the function modify it
-
-void prepData(char msg, float h, float f){
-  String dataString = "";
-  char buffer[16];
-  // char message[50];
-  String stringH = dtostrf(h,6,2,buffer);
-  dataString = stringH;
-  dataString += ",";
-  String stringF = dtostrf(f,6,2,buffer);
-  dataString += stringF;
-  dataString.toCharArray(msg, 50);
-}
-// void prepData(char &msg, float h, float f);
-
 void loop() {
 
   if (!client.connected()) {
@@ -118,13 +137,17 @@ void loop() {
   client.loop();
 
   long now = millis();
-  if (now - lastMsg > 10000) {
+  if (now - lastMsg > 2000) {
     lastMsg = now;
-    float humidity    = 75.25;
-    float temperature = 75.25;
-    prepData(&msg, temperature, humidity);
+    getTemp();
+    char tempChar[7];
+    dtostrf(temp,4,2,tempChar);
+    sprintf(msg, "%s,%s", currentHostname, tempChar);
+    // dtostrf(FLOAT,WIDTH,PRECSISION,BUFFER);
+
+
     Serial.print("Publish message: ");
     Serial.println(msg);
-    client.publish("temperature", msg);
+    client.publish("outTopic", msg);
   }
 }
