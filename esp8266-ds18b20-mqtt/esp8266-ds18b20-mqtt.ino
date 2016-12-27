@@ -1,36 +1,34 @@
 /*
- Basic ESP8266 MQTT example
+  MQTT Temperature Client
+  DS18B20 Connected on Pin 2 / D4
+  OTA Uploads - default port of 8266
+  TEMP_SERVER - server IP
+  MQTT_PORT   - default of 1883
 
- This sketch demonstrates the capabilities of the pubsub library in combination
- with the ESP8266 board/library.
+  Reads temperature every 5m and posts it to the "outTopic" topic on the MQTT Server
+  Subscribes to the LED topic
+    - casts values to int
+    - writes the int to an analog signal on D5
+  Subscribes to the PSU topic
+    - 0 turns off PSU
+    - 1 turns on PSU
+  Subscribes to the TEMP_REQ topic
+    - when a 1 is received
+    - it sends an immediate from the temperature sensor
 
- It connects to an MQTT server then:
-  - publishes "hello world" to the topic "outTopic" every two seconds
-  - subscribes to the topic "inTopic", printing out any messages
-    it receives. NB - it assumes the received payloads are strings not binary
-  - If the first character of the topic "inTopic" is an 1, switch ON the ESP Led,
-    else switch it off
-
- It will reconnect to the server if the connection is lost using a blocking
- reconnect function. See the 'mqtt_reconnect_nonblocking' example for how to
- achieve the same result without blocking the main loop.
-
- To install the ESP8266 board, (using Arduino 1.6.4+):
-  - Add the following 3rd party board manager under "File -> Preferences -> Additional Boards Manager URLs":
-       http://arduino.esp8266.com/stable/package_esp8266com_index.json
-  - Open the "Tools -> Board -> Board Manager" and click install for the ESP8266"
-  - Select your ESP8266 in "Tools -> Board"
-
+  TODO: Give the topics better names - inTopic / outTopic are awful
 */
 
 #include <ESP8266WiFi.h>
+#include <ESP8266mDNS.h>
+#include <WiFiUdp.h>
+#include <ArduinoOTA.h>
 #include <PubSubClient.h>
 #include <WifiCreds.h>
 #include <OneWire.h>
 #include <DallasTemperature.h>
 #define ONE_WIRE_BUS 2
-#define SLEEP_DELAY_IN_SECONDS  30
-
+#define MQTT_PORT 1883
 uint8_t MAC_array[6];
 char MAC_char[18];
 
@@ -41,11 +39,12 @@ OneWire oneWire(ONE_WIRE_BUS);
 DallasTemperature sensors(&oneWire);
 WiFiClient espClient;
 PubSubClient client(espClient);
+
 long lastMsg = 0;
 char msg[50];
 float temp = 0.0;
-
 char currentHostname[14];
+
 
 float getTemp(){
   sensors.requestTemperatures();
@@ -58,22 +57,45 @@ float getTemp(){
 
 
 void setup() {
-  pinMode(BUILTIN_LED, OUTPUT);     // Initialize the BUILTIN_LED pin as an output
+  pinMode(D5, OUTPUT);     // Initialize the D5 pin as an output
+  pinMode(D6, OUTPUT);     // Initialize the D6 pin as an output
   Serial.begin(115200);
   setup_wifi();
-  client.setServer(TEMP_SERVER, 1883);
+  // Setup OTA Uploads
+  ArduinoOTA.setPassword((const char *)"boarding");
+
+  ArduinoOTA.onStart([]() {
+    Serial.println("STARTING OTA UPDATE");
+  });
+  ArduinoOTA.onEnd([]() {
+    Serial.println("\nCOMPLETED OTA UPDATE");
+  });
+  ArduinoOTA.onProgress([](unsigned int progress, unsigned int total) {
+    Serial.printf("Progress: %u%%\r", (progress / (total / 100)));
+  });
+  ArduinoOTA.onError([](ota_error_t error) {
+    Serial.printf("Error[%u]: ", error);
+    if (error == OTA_AUTH_ERROR) Serial.println("Auth Failed");
+    else if (error == OTA_BEGIN_ERROR) Serial.println("Begin Failed");
+    else if (error == OTA_CONNECT_ERROR) Serial.println("Connect Failed");
+    else if (error == OTA_RECEIVE_ERROR) Serial.println("Receive Failed");
+    else if (error == OTA_END_ERROR) Serial.println("End Failed");
+  });
+  ArduinoOTA.begin();
+
+  client.setServer(TEMP_SERVER, MQTT_PORT);
   client.setCallback(callback);
 }
 
 void setup_wifi() {
 
   delay(10);
-  // We start by connecting to a WiFi network
+
   Serial.println();
   Serial.print("Connecting to ");
   WiFi.mode(WIFI_STA);
   Serial.println(MY_SSID);
-    WiFi.begin(MY_SSID, MY_PASSWORD);
+  WiFi.begin(MY_SSID, MY_PASSWORD);
 
   while (WiFi.status() != WL_CONNECTED) {
     delay(500);
@@ -84,7 +106,7 @@ void setup_wifi() {
   Serial.println("WiFi connected");
   Serial.println("IP address: ");
   Serial.println(WiFi.localIP());
-  // Store the s to use later for MQTT ID
+  // Store the hostname to use later for MQTT ID
   String hostnameString = WiFi.hostname();
   hostnameString.toCharArray(currentHostname, 14);
   Serial.print("Hostname: ");
@@ -99,14 +121,35 @@ void callback(char* topic, byte* payload, unsigned int length) {
     Serial.print((char)payload[i]);
   }
   Serial.println();
+  payload[length] = '\0';
+  char *payloadS = (char *) payload;
 
+
+  // TODO: Handle different topics - case statement?
+  // if topic == LED
+  // if topic == PSU
+  // else
   // Switch on the LED if an 1 was received as first character
-  if ((char)payload[0] == '1') {
-    digitalWrite(BUILTIN_LED, LOW);   // Turn the LED on (Note that LOW is the voltage level
-    // but actually the LED is on; this is because
-    // it is acive low on the ESP-01)
-  } else {
-    digitalWrite(BUILTIN_LED, HIGH);  // Turn the LED off by making the voltage HIGH
+  if (strcmp(topic, "TEMP_REQ") == 0){
+    if ((char)payload[0] == '1') {
+      Serial.println("Temperature update requested!");
+      sendTempUpdate();
+    }
+  }
+  if (strcmp(topic, "LED") == 0 ){
+    unsigned int ledValue = atoi(payloadS);
+    Serial.print("Setting LED to: ");
+    Serial.println((int) ledValue);
+    analogWrite(D5, (int) ledValue);
+  }
+  if( strcmp(topic, "PSU") == 0){
+    if ((char)payload[0] == '1') {
+      Serial.print("Turning power supply ON!");
+      digitalWrite(D6, HIGH);
+    }else{
+      Serial.print("Turning power supply OFF!");
+      digitalWrite(D6, LOW);
+    }
   }
 
 }
@@ -119,7 +162,9 @@ void reconnect() {
     if (client.connect(currentHostname)) {
       Serial.println("connected");
       // ... and resubscribe
-      client.subscribe("inTopic");
+      client.subscribe("TEMP_REQ");
+      client.subscribe("LED");
+      client.subscribe("PSU");
     } else {
       Serial.print("failed, rc=");
       Serial.print(client.state());
@@ -129,25 +174,28 @@ void reconnect() {
     }
   }
 }
-void loop() {
+void sendTempUpdate(){
+  getTemp();
+  char tempChar[7];
+  // dtostrf(FLOAT,WIDTH,PRECSISION,BUFFER);
+  dtostrf(temp,4,2,tempChar);
+  sprintf(msg, "%s,%s", currentHostname, tempChar);
 
+  Serial.print("Publish message: ");
+  Serial.println(msg);
+  client.publish("outTopic", msg);
+}
+
+void loop() {
+  ArduinoOTA.handle();
   if (!client.connected()) {
     reconnect();
   }
   client.loop();
 
   long now = millis();
-  if (now - lastMsg > 2000) {
+  if (now - lastMsg > SEND_TEMP_INTERVAL) {
     lastMsg = now;
-    getTemp();
-    char tempChar[7];
-    dtostrf(temp,4,2,tempChar);
-    sprintf(msg, "%s,%s", currentHostname, tempChar);
-    // dtostrf(FLOAT,WIDTH,PRECSISION,BUFFER);
-
-
-    Serial.print("Publish message: ");
-    Serial.println(msg);
-    client.publish("outTopic", msg);
+    sendTempUpdate();
   }
 }
