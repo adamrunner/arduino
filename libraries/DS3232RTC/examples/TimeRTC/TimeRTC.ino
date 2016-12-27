@@ -6,22 +6,22 @@
  */
 
 #include <DS3232RTC.h>    //http://github.com/JChristensen/DS3232RTC
-#include <Time.h>         //http://www.arduino.cc/playground/Code/Time  
+#include <TimeLib.h>         //http://www.arduino.cc/playground/Code/Time
 #include <Wire.h>         //http://arduino.cc/en/Reference/Wire (included with Arduino IDE)
 
 void setup(void)
 {
-    Serial.begin(9600);
+    Serial.begin(115200);
     setSyncProvider(RTC.get);   // the function to get the time from the RTC
-    if(timeStatus() != timeSet) 
+    if(timeStatus() != timeSet)
         Serial.println("Unable to sync with the RTC");
     else
-        Serial.println("RTC has set the system time");      
+        Serial.println("RTC has set the system time");
 }
 
 void loop(void)
 {
-    digitalClockDisplay();  
+    digitalClockDisplay();
     delay(1000);
 }
 
@@ -36,8 +36,8 @@ void digitalClockDisplay(void)
     Serial.print(' ');
     Serial.print(month());
     Serial.print(' ');
-    Serial.print(year()); 
-    Serial.println(); 
+    Serial.print(year());
+    Serial.println();
 }
 
 void printDigits(int digits)
