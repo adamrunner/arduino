@@ -82,7 +82,7 @@ void setup() {
     else if (error == OTA_END_ERROR) Serial.println("End Failed");
   });
   ArduinoOTA.begin();
-
+  getTemp();
   client.setServer(TEMP_SERVER, MQTT_PORT);
   client.setCallback(callback);
 }
