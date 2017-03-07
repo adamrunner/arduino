@@ -46,7 +46,7 @@
 #define PUMP D7
 #define PSU D6
 #define LED D5
-#define RUN_PUMP_LENGTH 5000 // amount of time to let the pump run in seconds
+#define RUN_PUMP_LENGTH 240000 // amount of time to let the pump run in seconds
 uint8_t MAC_array[6];
 char MAC_char[18];
 
@@ -82,14 +82,22 @@ void setup() {
   pinMode(PUMP, OUTPUT);     // D7 pin - Pump
   Serial.begin(115200);
   setup_wifi();
+  client.setServer(TEMP_SERVER, MQTT_PORT);
+  client.setCallback(callback);
   // Setup OTA Uploads
   ArduinoOTA.setPassword((const char *)"boarding");
 
   ArduinoOTA.onStart([]() {
     Serial.println("STARTING OTA UPDATE");
+    char updateMessage[36]= "OTA UPDATE START - ";
+    strcat(updateMessage, currentHostname);
+    client.publish("debugMessages", updateMessage);
   });
   ArduinoOTA.onEnd([]() {
     Serial.println("\nCOMPLETED OTA UPDATE");
+    char updateMessage[37]= "OTA UPDATE FINISH - ";
+    strcat(updateMessage, currentHostname);
+    client.publish("debugMessages", updateMessage);
   });
   ArduinoOTA.onProgress([](unsigned int progress, unsigned int total) {
     Serial.printf("Progress: %u%%\r", (progress / (total / 100)));
@@ -103,9 +111,7 @@ void setup() {
     else if (error == OTA_END_ERROR) Serial.println("End Failed");
   });
   ArduinoOTA.begin();
-  getTemp();
-  client.setServer(TEMP_SERVER, MQTT_PORT);
-  client.setCallback(callback);
+
 }
 
 void setup_wifi() {
@@ -147,7 +153,6 @@ void callback(char* topic, byte* payload, unsigned int length) {
 
   // TODO: Clean up logic - possibly by using a case statement?
 
-  // Switch on the LED if an 1 was received as first character
   if (strcmp(topic, "TEMP_REQ") == 0){
     if ((char)payload[0] == '1') {
       Serial.println("Temperature update requested!");
@@ -236,6 +241,8 @@ void stopPump() {
   client.publish("outTopic", "Stopping Pump");
   digitalWrite(PUMP, LOW);
 }
+//TODO: Send state update
+//TODO: state update should send PSU, PUMP, TEMP, and other messages. 
 
 void loop() {
   ArduinoOTA.handle();
