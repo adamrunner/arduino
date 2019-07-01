@@ -31,7 +31,8 @@
   ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF 
   ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.  
   
-  SSD1606: 128x180x2
+  SSD1606: 128x180x2 
+  two-bit, four graylevels
   command 
     0x22: assign actions
     0x20: execute actions
@@ -169,33 +170,39 @@ static const uint8_t u8x8_d_ssd1606_to_display_seq[] = {
   U8X8_DLY(200),		/* this requres about 270ms */
   U8X8_DLY(90),  
   
+  //U8X8_CA(0x10, 0x01), /* deep sleep mode */
+  //U8X8_C(0x20), 		/* execute sequence */
+  U8X8_DLY(50),  
+  
   U8X8_END_TRANSFER(),             	/* disable chip */
   U8X8_END()             			/* end of sequence */
 };
 
-static const uint8_t u8x8_d_ssd1606_172x72_powersave0_seq[] = {
-  U8X8_START_TRANSFER(),             	/* enable chip, delay is part of the transfer start */
-  U8X8_END_TRANSFER(),             	/* disable chip */
-  U8X8_END()             			/* end of sequence */
-};
 
-static const uint8_t u8x8_d_ssd1606_172x72_powersave1_seq[] = {
-  U8X8_START_TRANSFER(),             	/* enable chip, delay is part of the transfer start */
-  U8X8_END_TRANSFER(),             	/* disable chip */
-  U8X8_END()             			/* end of sequence */
-};
+// static const uint8_t u8x8_d_ssd1606_172x72_powersave0_seq[] = {
+//   U8X8_START_TRANSFER(),             	/* enable chip, delay is part of the transfer start */
+//   U8X8_END_TRANSFER(),             	/* disable chip */
+//   U8X8_END()             			/* end of sequence */
+// };
 
-static const uint8_t u8x8_d_ssd1606_172x72_flip0_seq[] = {
-  U8X8_START_TRANSFER(),             	/* enable chip, delay is part of the transfer start */
-  U8X8_END_TRANSFER(),             	/* disable chip */
-  U8X8_END()             			/* end of sequence */
-};
 
-static const uint8_t u8x8_d_ssd1606_172x72_flip1_seq[] = {
-  U8X8_START_TRANSFER(),             	/* enable chip, delay is part of the transfer start */
-  U8X8_END_TRANSFER(),             	/* disable chip */
-  U8X8_END()             			/* end of sequence */
-};
+// static const uint8_t u8x8_d_ssd1606_172x72_powersave1_seq[] = {
+//   U8X8_START_TRANSFER(),             	/* enable chip, delay is part of the transfer start */
+//   U8X8_END_TRANSFER(),             	/* disable chip */
+//   U8X8_END()             			/* end of sequence */
+// };
+
+// static const uint8_t u8x8_d_ssd1606_172x72_flip0_seq[] = {
+//   U8X8_START_TRANSFER(),             	/* enable chip, delay is part of the transfer start */
+//   U8X8_END_TRANSFER(),             	/* disable chip */
+//   U8X8_END()             			/* end of sequence */
+// };
+
+// static const uint8_t u8x8_d_ssd1606_172x72_flip1_seq[] = {
+//   U8X8_START_TRANSFER(),             	/* enable chip, delay is part of the transfer start */
+//   U8X8_END_TRANSFER(),             	/* disable chip */
+//   U8X8_END()             			/* end of sequence */
+// };
 
 
 static uint8_t *u8x8_convert_tile_for_ssd1606(uint8_t *t)
@@ -331,10 +338,10 @@ static uint8_t u8x8_d_ssd1606_172x72_generic(u8x8_t *u8x8, uint8_t msg, uint8_t 
       break;
 #ifdef U8X8_WITH_SET_CONTRAST
     case U8X8_MSG_DISPLAY_SET_CONTRAST:
+/*
       u8x8_cad_StartTransfer(u8x8);
-      u8x8_cad_SendCmd(u8x8, 0x081 );
-      u8x8_cad_SendArg(u8x8, arg_int );	/* ssd1306 has range from 0 to 255 */
       u8x8_cad_EndTransfer(u8x8);
+*/
       break;
 #endif
     case U8X8_MSG_DISPLAY_DRAW_TILE:

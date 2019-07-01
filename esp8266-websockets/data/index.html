@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+  <head>
+    <meta charset="utf-8">
+    <title>Esp8266 websockets</title>
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon-180x180.png">
+    <link rel="icon" type="image/png" sizes="144x144"  href="/favicon-144x144.png">
+    <link rel="icon" type="image/png" sizes="48x48" href="/favicon.ico">
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#00878f">
+    <meta content='width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0' name='viewport'>
+  </head>
+  <body>
+    <input type="text" id="message">
+    <button onclick="webSocketSend()">Send</button>
+    <script>
+      var websocket = new WebSocket("ws://esp8266.local:81")
+      var input = document.getElementById('message')
+      websocket.onmessage = function (event) {
+        console.log(event.data);
+      }
+
+      function webSocketSend(){
+        websocket.send(input.value)
+      }
+    </script>
+
+  </body>
+</html>
